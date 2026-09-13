@@ -131,6 +131,54 @@ header:after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;
   #vfx-canvas,.vfx-cursor-glow{display:none!important}
 }
 
+
+/* === SAKURA PETAL VFX === */
+.sakura-layer{
+  position:fixed;
+  inset:0;
+  overflow:hidden;
+  pointer-events:none;
+  z-index:-1;
+}
+.sakura-petal{
+  position:absolute;
+  top:-8vh;
+  width:14px;
+  height:10px;
+  border-radius:80% 20% 75% 25%;
+  background:linear-gradient(135deg,rgba(255,236,246,.98),rgba(255,151,199,.92) 55%,rgba(255,104,171,.78));
+  box-shadow:0 0 12px rgba(255,116,182,.24);
+  opacity:.72;
+  transform-origin:50% 50%;
+  will-change:transform,top,left;
+  animation:
+    sakuraFall var(--fall-duration) linear var(--fall-delay) infinite,
+    sakuraSway var(--sway-duration) ease-in-out var(--fall-delay) infinite alternate,
+    sakuraSpin var(--spin-duration) linear var(--fall-delay) infinite;
+}
+.sakura-petal:nth-child(3n){width:11px;height:8px;opacity:.52}
+.sakura-petal:nth-child(4n){width:18px;height:12px;opacity:.82;filter:blur(.2px)}
+.sakura-petal:nth-child(5n){opacity:.4}
+@keyframes sakuraFall{
+  from{top:-8vh}
+  to{top:108vh}
+}
+@keyframes sakuraSway{
+  0%{margin-left:-35px}
+  50%{margin-left:34px}
+  100%{margin-left:-15px}
+}
+@keyframes sakuraSpin{
+  from{transform:rotate(0deg) rotateX(0deg) rotateY(0deg)}
+  to{transform:rotate(360deg) rotateX(190deg) rotateY(110deg)}
+}
+@media(max-width:700px){
+  .sakura-petal:nth-child(n+15){display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .sakura-layer{display:none!important}
+}
+
 </style>
 </head>
 <body>
@@ -139,6 +187,7 @@ header:after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;
 <div class="vfx-orb" aria-hidden="true"></div>
 <div class="vfx-grid" aria-hidden="true"></div>
 <div class="vfx-noise" aria-hidden="true"></div>
+<div class="sakura-layer" aria-hidden="true"></div>
 <div class="vfx-cursor-glow" aria-hidden="true"></div>
 <header><div class="brand">HEHRENMAN<b>_88</b></div><nav><a href="#buildings">Buildings</a><a href="#models">Models</a><a href="#pricing">Pricing</a><a href="https://www.roblox.com/users/profile?username=Hehrenman_88" target="_blank">Roblox ↗</a></nav></header>
 <main>
@@ -348,6 +397,29 @@ setupPortfolioFilters();
     requestAnimationFrame(draw);
   }
   requestAnimationFrame(draw);
+})();
+</script>
+
+
+<script>
+(function(){
+  const layer = document.querySelector('.sakura-layer');
+  if(!layer || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const total = window.innerWidth < 700 ? 14 : 30;
+  const frag = document.createDocumentFragment();
+
+  for(let i=0;i<total;i++){
+    const p=document.createElement('span');
+    p.className='sakura-petal';
+    p.style.left=(Math.random()*100)+'vw';
+    p.style.setProperty('--fall-duration',(9+Math.random()*10)+'s');
+    p.style.setProperty('--sway-duration',(2.8+Math.random()*4.5)+'s');
+    p.style.setProperty('--spin-duration',(4+Math.random()*7)+'s');
+    p.style.setProperty('--fall-delay',(-Math.random()*18)+'s');
+    p.style.transform='scale('+(0.65+Math.random()*0.8)+')';
+    frag.appendChild(p);
+  }
+  layer.appendChild(frag);
 })();
 </script>
 
