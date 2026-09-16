@@ -1092,6 +1092,25 @@ footer{color:#687587!important}
 }
 /* === END DEPARTMENT ICONS + SUBFILTERS 2026 === */
 
+
+/* Commission closed state */
+.commission-status.closed{
+  border-color:rgba(255,92,92,.34)!important;
+  background:rgba(255,68,68,.09)!important;
+  color:#ffd6d6!important;
+  box-shadow:0 0 22px rgba(255,68,68,.10)!important;
+}
+.commission-status.closed i{
+  background:#ff5c5c!important;
+  box-shadow:0 0 0 0 rgba(255,92,92,.55)!important;
+  animation:commissionPulseClosed 1.9s ease-out infinite!important;
+}
+@keyframes commissionPulseClosed{
+  0%{box-shadow:0 0 0 0 rgba(255,92,92,.58)}
+  70%{box-shadow:0 0 0 8px rgba(255,92,92,0)}
+  100%{box-shadow:0 0 0 0 rgba(255,92,92,0)}
+}
+
 </style>
 </head>
 <body>
@@ -1104,7 +1123,7 @@ footer{color:#687587!important}
 <div class="vfx-cursor-glow" aria-hidden="true"></div>
 
 <div class="anime-transition" aria-hidden="true"></div>
-<header><div class="brand">CHAOS_<b>HAMSTERDEV</b></div><a class="commission-status" href="#pricing"><i></i>COMMISSIONS OPEN</a><nav><a href="#buildings">Builds</a><a href="#models">Models</a><a href="#pricing">Pricing</a><a href="https://www.roblox.com/users/profile?username=Chaos_HamsterDev2" target="_blank">Roblox ↗</a></nav></header>
+<header><div class="brand">CHAOS_<b>HAMSTERDEV</b></div><a class="commission-status closed" href="#pricing"><i></i>COMMISSIONS CLOSED</a><nav><a href="#buildings">Builds</a><a href="#models">Models</a><a href="#pricing">Pricing</a><a href="https://www.roblox.com/users/profile?username=Chaos_HamsterDev2" target="_blank">Roblox ↗</a></nav></header>
 
 <nav class="scroll-hud" aria-label="Page progress">
   <a class="hud-link active" href="#home" data-hud="home"><span>Home</span></a>
