@@ -1,60 +1,31 @@
-# STRIKE ARENA — v2
+# STRIKE ARENA 3D ⚽
 
-Ein kostenloses **4-gegen-4-Online-Fußballspiel im Browser**. Pro Match sind maximal acht Personen und frei auffüllbare Bots auf dem Feld.
+Browser-Fußball mit 2D-/3D-Ansicht, 1v1, 2v2, 3v3, 4v4, Elfmeterschießen, privaten Online-Räumen und drei Bot-Schwierigkeitsgraden. Spieler im 2D- und 3D-Modus können zusammen spielen: Die gemeinsame Physik wird ausschließlich auf dem Server simuliert.
 
-## Start
+## Starten
 
-Node.js 20+ erforderlich:
+1. Node.js 20 oder neuer installieren.
+2. `npm install` ausführen – lädt Three.js für die 3D-Grafik.
+3. `npm start` ausführen und `http://localhost:3000` öffnen.
+4. Einen Modus und die Grafikansicht wählen. Im Solo-Modus sofort gegen Bots spielen oder per Raumcode Freunde einladen.
 
-```bash
-npm install
-npm start
-```
+## Funktionen
 
-Öffne `http://localhost:3000` im Browser. Um die Tests auszuführen: `npm test`.
+- **2D Classic** und **3D Stadion** – jederzeit wechselbar, auch während des Spiels.
+- **3D-Grafik** – Echtzeit-WebGL mit Schatten, Spielfeldlinien, Stadionlichtern, Tribünen, 3D-Spielern und Ball.
+- **Torreplay** – Rückblick aus aufgezeichneten Multiplayer-Zuständen mit eigener Wiederholungskamera und Überspringen.
+- **Modi:** 1v1, 2v2, 3v3, 4v4 und Elfmeterschießen mit abwechselnden Schüssen, Torwart-KI und möglicher Sudden Death.
+- **Private Multiplayer-Räume** mit Einladungscode, bis zu acht echte Spieler (je nach Modus), aufgefüllt mit KI-Bots.
+- Tastatur: WASD/Pfeile Bewegung, SPACE Schuss, E Pass, Q Ball erobern, SHIFT Sprint; Touch-Steuerung für mobile Geräte. Beim Elfmeter Zielen per Regler und Schussknopf.
 
-## Features
+## Technische Hinweise
 
-- Privaten Raum hosten, Code/Einladungslink kopieren, Freunde einladen
-- Spiel gegen Bots, drei Schwierigkeitsstufen, Teamwechsel, Matchdauer 2–8 Minuten
-- **Neue Ballkontrolle**: Ein Spieler führt den Ball, statt dass alle Spieler ihn gleichzeitig bewegen
-- Zielgerichtete Schüsse und Pässe, Ballgewinne mit `Q`, Lauf- und Sprintsystem
-- Verbessertes Bot-Spiel: Torwartpositionierung, zielgerichtete Pässe, Zweikampf und Pressing
-- Spätes Beitreten im laufenden Match (Bots werden ersetzt), automatische Wiederverbindung im Frontend
-- PC und Touch-Bedienung; am Handy für mehr Übersicht Querformat nutzen
-- Serverseitiger Spielzustand mit WebSocket-Synchronisierung, health-Endpoint unter `/health`
-- Kein Tracking, keine API-Keys, keine externen Laufzeitabhängigkeiten
+Der Node.js-Server hostet `/three.module.js` direkt aus dem npm-Paket `three`, ohne externe Grafik-CDNs. Die 3D-Ansicht benötigt WebGL; wenn 3D auf einem Gerät nicht möglich ist, bleibt 2D als Fallback verfügbar. Die Grafik ist ein hochwertiger, prozedural aufgebauter Stadion-Look, **keine fotorealistische Fußballsimulation**. Replays sind clientseitige Ausschnitte der letzten Zustandsupdates und kein auf dem Server dauerhaft gespeichertes Video. Räume liegen im Arbeitsspeicher und gehen bei einem Serverneustart verloren.
 
-## Steuerung
+## Render Deployment
 
-| PC | Aktion |
-|---|---|
-| WASD / Pfeiltasten | Bewegen |
-| Maus | Zielen |
-| Leertaste / Linksklick | Schießen |
-| E | Passen |
-| Q | Zweikampf / Ball erobern |
-| Shift | Sprint |
+Im Monorepo wird `cd strike-arena && npm install` für den Build und `cd strike-arena && npm start` zum Starten genutzt; der Start-Port wird aus `process.env.PORT` gelesen. Live-Matches brauchen WebSocket-Verbindungen, daher **kein GitHub Pages**.
 
-Am Smartphone Joystick plus Schuss-, Pass-, Sprint- und Ballgewinnen-Buttons. Der Aim-Richtungsvektor kommt vom Joystick.
+## Tests
 
-## Deployment
-
-Das Projekt ist im GitHub-Repository `hehrenman88-portfolio` unter `strike-arena/` abgelegt. Es läuft als Node.js Web Service auf Render.
-
-- Region: Frankfurt, Instanz: `free`
-- Build-Befehl: `cd strike-arena && npm install`
-- Start-Befehl: `cd strike-arena && npm start`
-- Health-Check: `/health`
-- Für neue GitHub-Commits ist Auto-Deploy aktiviert.
-
-**Grenzen:** Dies ist weiterhin ein **2D-Arcade-Fußballspiel**, kein 3D-Simulator. Räume und Live-Spiele sind nur im Speicher einer Render-Instanz gespeichert. Kostenlose Render-Webdienste können im Leerlauf pausieren, danach gehen laufende Runden verloren. Eine DB/Authentifizierung gibt es derzeit nicht. Bitte nur eine Instanz betreiben. 
-
-## Dateistruktur
-
-- `server.js`: Autoritativer Multiplayer-/Spieleserver
-- `miniws.js`: Minimaler WebSocket-Server
-- `public/index.html`: Web-UI
-- `public/style.css`: Layout für Desktop und Mobile
-- `public/client.js`: Spielrenderer, Eingaben, UI, Reconnect
-- `tests`: HTTP-, Multiplayer- und Spielphysiktests
+`npm test` startet Serverphysik-, Modus-, Elfmeter- und Multiplayer-Tests.
