@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#081414" />
+  <meta name="description" content="STRIKE ARENA: Spiele direkt im Browser Fußball mit Freunden oder gegen Bots. Erstelle einen privaten Raum und teile den Code." />
+  <title>STRIKE ARENA — Dein Spiel. Dein Stadion.</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <header class="navbar">
+    <button class="brand" id="brandBtn" type="button" aria-label="Zur Startseite">
+      <span class="logo-icon"><svg viewBox="0 0 34 34" fill="none"><path d="M17 2 29.5 9v15L17 32 4.5 24V9L17 2Z" stroke="currentColor" stroke-width="2.5"/><path d="m17 10 6 4.5-2.3 7H13.3l-2.3-7L17 10ZM11 14.5 5.5 12M23 14.5l5.5-2M13.3 21.5 11 28M20.7 21.5 23 28" stroke="currentColor" stroke-width="2"/></svg></span>
+      <span>STRIKE<span class="brand-green">ARENA</span></span>
+    </button>
+    <div class="nav-right"><span class="server-status"><i id="connectionDot"></i><span id="connectionText">Verbinde ...</span></span><span class="nav-badge">BROWSER FOOTBALL</span></div>
+  </header>
+
+  <main id="homeScreen" class="home-screen screen">
+    <div class="hero-grid">
+      <section class="hero-copy">
+        <div class="eyebrow"><span class="eyebrow-line"></span> KICK-OFF. ANYWHERE. ANYTIME.</div>
+        <h1>DEIN SPIEL.<br><em>DEINE REGELN.</em></h1>
+        <p class="hero-sub">Lade deine Freunde ins Stadion ein oder fordere unsere KI-Gegner heraus. 4 gegen 4, ein Ball, ein Ziel. Direkt im Browser.</p>
+        <div class="hero-features">
+          <div><span class="feature-icon">⚡</span><span><strong>Sofort spielbar</strong><small>Kein Download nötig</small></span></div>
+          <div><span class="feature-icon">◎</span><span><strong>Private Räume</strong><small>Einfach Code teilen</small></span></div>
+          <div><span class="feature-icon">✦</span><span><strong>Smarte Bots</strong><small>3 Schwierigkeitsgrade</small></span></div>
+        </div>
+        <div class="hero-stat-line"><span class="live-circle"></span> ONLINE MULTIPLAYER <b>•</b> DESKTOP + MOBILE <b>•</b> 4V4 ARENA</div>
+      </section>
+      <section class="setup-card" aria-label="Spiel erstellen oder beitreten">
+        <div class="setup-heading"><span class="setup-header-icon">▦</span><div><span class="overline">PLAYER HUB</span><h2>Ab auf den Platz.</h2></div><span class="card-season">SEASON 01</span></div>
+        <label for="playerName" class="field-label">DEIN SPIELERNAME</label>
+        <div class="field-input"><span class="prefix-icon">◉</span><input id="playerName" maxlength="16" autocomplete="nickname" placeholder="Dein Name" value="Spieler" /></div>
+        <div class="form-divider"><span>SPIELMODUS WÄHLEN</span></div>
+        <button class="mode-row primary-mode" id="soloBtn" type="button"><span class="mode-symbol solo-symbol">⚔</span><span class="mode-desc"><strong>Gegen Bots spielen</strong><small>Alleine starten · Sofortiges Match</small></span><span class="mode-arrow">↗</span></button>
+        <button class="mode-row" id="createBtn" type="button"><span class="mode-symbol">▦</span><span class="mode-desc"><strong>Privaten Raum hosten</strong><small>Freunde einladen · Eigene Teams</small></span><span class="mode-arrow">↗</span></button>
+        <div class="join-title">ODER EINEM RAUM BEITRETEN</div>
+        <div class="join-field"><input id="roomCode" maxlength="5" placeholder="RAUMCODE" autocapitalize="characters" aria-label="Raumcode"/><button id="joinBtn" type="button">BEITRETEN <span>→</span></button></div>
+        <p class="hint" id="setupHint">Spielzeit und Bot-Stärke kannst du im Warteraum anpassen.</p>
+      </section>
+    </div>
+    <section class="stadium-preview" aria-label="Stadion-Vorschau">
+      <div class="preview-heading"><span><i class="live-circle"></i> THE PITCH IS YOURS</span><span>BUILT FOR THE BEAUTIFUL GAME <b>↗</b></span></div>
+      <div class="preview-field"><div class="preview-center"><div class="preview-circle"></div></div><div class="preview-players preview-left"><i></i><i></i><i></i><i></i></div><div class="preview-players preview-right"><i></i><i></i><i></i><i></i></div><div class="preview-ball">⚽</div><div class="preview-gradient"></div><span class="preview-large-type">FEEL THE GAME.</span></div>
+    </section>
+  </main>
+
+  <main id="lobbyScreen" class="lobby-screen screen hidden">
+    <div class="backline"><button id="leaveLobby" class="text-btn" type="button">← Zurück zur Startseite</button><span class="tiny-label">PRIVATE MATCH / LOBBY</span></div>
+    <div class="lobby-top"><div><div class="eyebrow"><span class="eyebrow-line"></span> MATCH LOBBY</div><h1>DEIN STADION.<br><em>DEIN TEAM.</em></h1><p>Lade deine Freunde ein und stellt eure Teams zusammen.</p></div><div class="invite-card"><span class="overline">DEIN RAUMCODE</span><div class="room-code-display" id="displayCode">-----</div><div class="invite-buttons"><button id="copyCode" type="button">Code kopieren</button><button id="copyLink" type="button">Einladungslink ↗</button></div></div></div>
+    <div class="lobby-grid"><div class="roster team-blue"><div class="roster-heading"><span class="team-pill blue">● HEIM</span><strong>BLUE STRIKERS</strong><span id="blueCount">0 / 4</span></div><div id="blueRoster" class="roster-slots"></div><button class="join-team-btn" id="blueJoin" type="button">Team Blau wählen</button></div><div class="versus">VS<span>4 V 4</span></div><div class="roster team-red"><div class="roster-heading"><span class="team-pill red">● GAST</span><strong>RED RIVALS</strong><span id="redCount">0 / 4</span></div><div id="redRoster" class="roster-slots"></div><button class="join-team-btn" id="redJoin" type="button">Team Rot wählen</button></div></div>
+    <div class="lobby-bottom"><div class="settings-group"><div><label class="field-label" for="durationSelect">SPIELZEIT</label><select id="durationSelect"><option value="120">2 Minuten</option><option value="180" selected>3 Minuten</option><option value="300">5 Minuten</option><option value="480">8 Minuten</option></select></div><div><label class="field-label" for="difficultySelect">BOT-STÄRKE</label><select id="difficultySelect"><option value="easy">Einfach</option><option value="normal" selected>Normal</option><option value="hard">Profi</option></select></div></div><div class="lobby-action"><span id="lobbyWaitText">Freie Plätze werden von Bots besetzt.</span><button id="startBtn" class="launch-btn" type="button">MATCH STARTEN <span>↗</span></button></div></div>
+  </main>
+
+  <main id="gameScreen" class="game-screen screen hidden">
+    <div class="game-topline"><div class="match-label"><span class="pulse-icon"></span> LIVE MATCH <span class="game-room-tag" id="gameCode">-----</span></div><button id="leaveMatch" class="exit-btn" type="button">Match verlassen ↗</button></div>
+    <section class="scoreboard" aria-label="Spielstand"><div class="score-team"><span class="score-dot blue-dot"></span><span>BLUE STRIKERS</span></div><div class="score-count"><span id="blueScore">0</span><span class="score-dash">:</span><span id="redScore">0</span></div><div class="score-team right"><span>RED RIVALS</span><span class="score-dot red-dot"></span></div><div class="match-clock" id="matchClock">03:00</div></section>
+    <div class="game-layout"><div class="pitch-column"><div class="canvas-outer"><canvas id="pitchCanvas" width="1200" height="720" aria-label="Interaktives Fußballspielfeld"></canvas><div class="in-game-banner hidden" id="gameBanner"></div><div class="touch-controls" id="touchControls"><div id="joystick" class="joystick"><div id="joystickKnob" class="joystick-knob"></div><span class="stick-tag">MOVE</span></div><div class="touch-right"><button id="touchPass" type="button" class="pass-touch">PASS</button><button id="touchShoot" type="button" class="shoot-touch">SCHUSS</button><button id="touchSprint" type="button" class="sprint-touch">SPRINT</button></div></div></div><div class="control-guide"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Bewegen</span><span><kbd>SPACE</kbd> Schuss</span><span><kbd>E</kbd> Pass</span><span><kbd>SHIFT</kbd> Sprint</span><span class="guide-mobile">Handy: Joystick + Buttons</span></div></div><aside class="match-aside"><div class="aside-head"><span class="overline">AUF DEM FELD</span><strong>SPIELER</strong></div><div id="matchRoster" class="match-roster"></div><div class="tip-card"><span>COACH'S TIP</span><p>Halte <strong>Shift</strong> zum Sprinten. Nutze <strong>E</strong> für Pässe und <strong>Leertaste</strong> für Torschüsse. Mit der Maus zielst du.</p></div></aside></div>
+    <div id="endOverlay" class="end-overlay hidden"><div class="end-card"><div class="eyebrow">FULL TIME</div><h2 id="endTitle">ABPFIFF!</h2><div id="endScore" class="end-score">0 : 0</div><p id="endText">Stark gespielt!</p><div class="end-buttons"><button id="rematchBtn" class="launch-btn" type="button">NEUE RUNDE ↗</button><button id="endLeaveBtn" class="secondary-btn" type="button">Zur Startseite</button></div></div></div>
+  </main>
+
+  <footer id="footer">STRIKE ARENA <span>© 2026 · PLAY TOGETHER. WIN TOGETHER.</span><span>MADE FOR FRIENDS ⚡</span></footer>
+  <script src="/client.js" defer></script>
+</body>
+</html>
