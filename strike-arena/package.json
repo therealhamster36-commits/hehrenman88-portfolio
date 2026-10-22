@@ -1,8 +1,8 @@
 {
   "name": "strike-arena",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "private": true,
-  "description": "Online 4v4 browser football game with private rooms and bot matches",
+  "description": "Online 2D and 3D football: multiplayer 1v1–4v4, penalties, bots, 3D stadium and replays",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
@@ -11,5 +11,7 @@
   "engines": {
     "node": ">=20"
   },
-  "dependencies": {}
+  "dependencies": {
+    "three": "0.170.0"
+  }
 }
