@@ -61,3 +61,18 @@ test('invalid room is rejected',async()=>{
   assert.match(err.message,/nicht gefunden/);
   c.ws.close();
 });
+test('late joining a live match replaces a bot without restarting',async()=>{
+  const host=makeClient();await host.open;
+  host.send({type:'create',name:'Host'});
+  const ready=await waitFor(()=>host.events.find(e=>e.type==='room'));
+  const code=ready.room.code;
+  host.send({type:'start'});
+  await waitFor(()=>host.events.find(e=>e.type==='started'));
+  const friend=makeClient();await friend.open;
+  friend.send({type:'join',code,name:'Friend',team:1});
+  const joined=await waitFor(()=>friend.events.find(e=>e.type==='room'&&e.room.status==='playing'));
+  assert.equal(joined.room.code,code);
+  const next=await waitFor(()=>friend.events.find(e=>e.type==='snapshot'&&e.state.players.some(p=>p.name==='Friend')));
+  assert.equal(next.state.players.filter(p=>!p.bot).length,2);
+  host.ws.close();friend.ws.close();
+});
