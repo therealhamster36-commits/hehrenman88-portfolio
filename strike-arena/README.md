@@ -1,60 +1,60 @@
-# STRIKE ARENA ⚽
+# STRIKE ARENA — v2
 
-Ein kostenloses, spielbares **4-gegen-4-Browser-Fußballspiel** mit privaten Online-Räumen und Bot-Gegnern. Ohne Datenbank, ohne API-Schlüssel und ohne externe Server-Bibliotheken.
+Ein kostenloses **4-gegen-4-Online-Fußballspiel im Browser**. Pro Match sind maximal acht Personen und frei auffüllbare Bots auf dem Feld.
 
-## Funktionen
+## Start
 
-- **Privaten Raum erstellen** und **5-stelligen Code** bzw. Einladungslink teilen
-- **Online mit bis zu 8 echten Menschen** spielen (maximal 4 pro Team)
-- **Sofort gegen Bots spielen**, mit drei Schwierigkeitsgraden
-- Fehlende Teamspieler werden beim Spielstart automatisch durch Bots ersetzt
-- **Spieldauer 2, 3, 5 oder 8 Minuten**
-- Gemeinsamer Spielstand, Tore, Nachspiel-/Neustart-Lobby, Hostwechsel bei Verlassen
-- Desktop-Steuerung (WASD, Maus, Leertaste, E, Shift), Touch-Joystick und Buttons fürs Smartphone
-- Server berechnet Bewegungen, Ballphysik, Treffer und Bots; alle Clients sehen denselben Spielzustand
-
-## Lokal starten
-
-Du brauchst **Node.js 20 oder neuer**.
+Node.js 20+ erforderlich:
 
 ```bash
+npm install
 npm start
 ```
 
-Danach `http://localhost:3000` aufrufen. Ein zweiter Browser-Tab kann dem Raumcode beitreten. Für ein echtes Spiel über das Internet muss der Server online bereitgestellt werden.
+Öffne `http://localhost:3000` im Browser. Um die Tests auszuführen: `npm test`.
 
-## Öffentlich online stellen
+## Features
 
-Du kannst dieses Projekt zu **GitHub** hochladen und bei einem Node.js-Hostingdienst wie **Render** bereitstellen:
+- Privaten Raum hosten, Code/Einladungslink kopieren, Freunde einladen
+- Spiel gegen Bots, drei Schwierigkeitsstufen, Teamwechsel, Matchdauer 2–8 Minuten
+- **Neue Ballkontrolle**: Ein Spieler führt den Ball, statt dass alle Spieler ihn gleichzeitig bewegen
+- Zielgerichtete Schüsse und Pässe, Ballgewinne mit `Q`, Lauf- und Sprintsystem
+- Verbessertes Bot-Spiel: Torwartpositionierung, zielgerichtete Pässe, Zweikampf und Pressing
+- Spätes Beitreten im laufenden Match (Bots werden ersetzt), automatische Wiederverbindung im Frontend
+- PC und Touch-Bedienung; am Handy für mehr Übersicht Querformat nutzen
+- Serverseitiger Spielzustand mit WebSocket-Synchronisierung, health-Endpoint unter `/health`
+- Kein Tracking, keine API-Keys, keine externen Laufzeitabhängigkeiten
 
-1. Neues GitHub-Repository anlegen und alle Dateien hochladen (einschließlich `server.js`, `miniws.js` und `public/`).
-2. Auf https://dashboard.render.com/ einen neuen **Web Service** für dieses Repository erstellen.
-3. Laufzeit **Node**, Build Command `npm install`, Start Command `npm start`. Alternativ ist `render.yaml` enthalten.
-4. Nach erfolgreichem Deployment erhalten du und deine Freunde dieselbe öffentliche HTTPS-Adresse.
-5. Ein Spieler wählt **Privaten Raum hosten**, kopiert den Einladungslink und die Freunde treten über den Code bei.
+## Steuerung
 
-**Wichtig:** GitHub Pages allein reicht nicht, weil der Multiplayer-Server WebSocket-Verbindungen braucht. Ein Dienst kann in kostenlosen Tarifen bei Leerlauf einschlafen; die genauen Tarife können sich ändern. Spiele nicht auf zwei getrennten Server-Instanzen, da Räume derzeit im Arbeitsspeicher liegen.
+| PC | Aktion |
+|---|---|
+| WASD / Pfeiltasten | Bewegen |
+| Maus | Zielen |
+| Leertaste / Linksklick | Schießen |
+| E | Passen |
+| Q | Zweikampf / Ball erobern |
+| Shift | Sprint |
 
-## Tastatur
+Am Smartphone Joystick plus Schuss-, Pass-, Sprint- und Ballgewinnen-Buttons. Der Aim-Richtungsvektor kommt vom Joystick.
 
-| Aktion | Steuerung |
-| --- | --- |
-| Laufen | WASD oder Pfeiltasten |
-| Schuss | Leertaste oder Linksklick |
-| Pass | E |
-| Sprint | Shift |
-| Zielen | Mausposition oder Laufrichtung |
-| Smartphone | Touch-Joystick, Schuss-/Pass-/Sprint-Buttons |
+## Deployment
 
-## Struktur
+Das Projekt ist im GitHub-Repository `hehrenman88-portfolio` unter `strike-arena/` abgelegt. Es läuft als Node.js Web Service auf Render.
 
-- `server.js` – HTTP-Server, private Räume, Multiplayer-Simulation und Bots
-- `miniws.js` – schlanker WebSocket-Server ohne externe Abhängigkeiten
-- `public/index.html` – Website und Spieloberfläche
-- `public/style.css` – responsives Premium-Styling
-- `public/client.js` – Darstellung des Spielfelds, Eingaben, UI, Audio
-- `render.yaml` – beispielhafte Hosting-Konfiguration
+- Region: Frankfurt, Instanz: `free`
+- Build-Befehl: `cd strike-arena && npm install`
+- Start-Befehl: `cd strike-arena && npm start`
+- Health-Check: `/health`
+- Für neue GitHub-Commits ist Auto-Deploy aktiviert.
 
-## Hinweise
+**Grenzen:** Dies ist weiterhin ein **2D-Arcade-Fußballspiel**, kein 3D-Simulator. Räume und Live-Spiele sind nur im Speicher einer Render-Instanz gespeichert. Kostenlose Render-Webdienste können im Leerlauf pausieren, danach gehen laufende Runden verloren. Eine DB/Authentifizierung gibt es derzeit nicht. Bitte nur eine Instanz betreiben. 
 
-Dieses Projekt ist ein **funktionierender 2D-Arcade-Prototyp**, kein 3D-Fußballsimulator. Alle Räume liegen nur im Arbeitsspeicher und gehen bei Neustart des Servers verloren. Eine Datenbank ist nicht nötig, solange du keine Konten, Ranglisten oder persistenten Daten brauchst. Spielernamen sind öffentlich sichtbar für die anderen Spieler im jeweiligen Raum.
+## Dateistruktur
+
+- `server.js`: Autoritativer Multiplayer-/Spieleserver
+- `miniws.js`: Minimaler WebSocket-Server
+- `public/index.html`: Web-UI
+- `public/style.css`: Layout für Desktop und Mobile
+- `public/client.js`: Spielrenderer, Eingaben, UI, Reconnect
+- `tests`: HTTP-, Multiplayer- und Spielphysiktests
