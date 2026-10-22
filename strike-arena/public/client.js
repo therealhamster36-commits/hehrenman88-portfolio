@@ -7,7 +7,7 @@
   const DARK_COLORS = ['#2859b5', '#ae344e'];
   const ctx = $('pitchCanvas').getContext('2d');
   let socket = null, connected = false, currentRoom = null, myId = null, mode = 'home';
-  let pendingSolo = false, world = null, lastStateTick = -1, toastTimeout, bannerTimeout;
+  let pendingSolo = false, world = null, lastStateTick = -1, toastTimeout, bannerTimeout, pendingRejoin = null;
   let pingMs = 0, pingAt = 0, reconnectTimer, frameClock = 0, lastFrame = performance.now();
   const smoothPlayers = new Map();
   const keys = new Set();
@@ -41,17 +41,20 @@
     socket = new WebSocket(`${scheme}//${location.host}/ws`);
     socket.addEventListener('open', () => {
       connectionUI(true);
-      if (currentRoom) notice('Verbindung wiederhergestellt. Bitte erneut dem Raum beitreten.');
-      currentRoom = null; world = null; pendingSolo = false;
-      if (mode !== 'home') switchTo('home');
+      if (pendingRejoin) {
+        send({type:'join',code:pendingRejoin.code,name:pendingRejoin.name,team:pendingRejoin.team});
+        notice('Verbindung wiederhergestellt. Du trittst dem Match erneut bei.');
+        pendingRejoin = null;
+      } else if (mode !== 'home' && !currentRoom) switchTo('home');
     });
     socket.addEventListener('close', () => {
       connectionUI(false);
-      if (mode !== 'home') {
-        currentRoom = null; world = null;
-        switchTo('home');
-        notice('Verbindung getrennt. Verbindung wird erneut aufgebaut.');
+      if (currentRoom) {
+        pendingRejoin = {code:currentRoom.code,name:currentRoom.users.find(u=>u.id===myId)?.name || getName(),team:currentRoom.users.find(u=>u.id===myId)?.team ?? 0};
       }
+      currentRoom = null; world = null; smoothPlayers.clear();
+      if (mode !== 'home') switchTo('home');
+      notice('Verbindung verloren. Automatische Wiederverbindung läuft.');
       reconnectTimer = setTimeout(connect, 2000);
     });
     socket.addEventListener('error', () => {});
@@ -82,10 +85,10 @@
   }
   function onMessage(msg) {
     if (msg.type === 'welcome') { myId = msg.id; return; }
-    if (msg.type === 'error') { notice(msg.message); pendingSolo = false; return; }
+    if (msg.type === 'error') { notice(msg.message); pendingSolo = false; pendingRejoin = null; return; }
     if (msg.type === 'left') { currentRoom = null; world = null; switchTo('home'); return; }
     if (msg.type === 'room') {
-      currentRoom = msg.room; myId = msg.you;
+      currentRoom = msg.room; myId = msg.you; pendingRejoin = null;
       if (currentRoom.status === 'lobby') {
         if (mode !== 'lobby') switchTo('lobby');
         renderLobby();
@@ -105,7 +108,7 @@
     }
     if (msg.type === 'started') {
       world = null; lastStateTick = -1; smoothPlayers.clear(); sparks.length = 0;
-      $('endOverlay').classList.add('hidden'); showBanner('KICK OFF!', 1250);
+      $('endOverlay').classList.add('hidden'); showBanner('ANPFIFF', 900);
       return;
     }
     if (msg.type === 'snapshot') {
@@ -187,7 +190,7 @@
     $('matchClock').textContent = formatTime(world.timeLeft);
     const roster = $('matchRoster');
     const prior = roster.dataset.signature;
-    const signature = world.players.map(p => p.id + p.team).join(',');
+    const signature = world.players.map(p => p.id + p.team + p.bot).join(',');
     if (signature !== prior) {
       roster.replaceChildren();
       for (const team of [0,1]) for (const p of world.players.filter(p=>p.team===team)) {
@@ -199,10 +202,14 @@
       }
       roster.dataset.signature = signature;
     }
+    const holder = world.players.find(p => p.id === world.ball.ownerId);
+    $('possessionText').textContent = holder ? (holder.id === myId ? 'DU HAST DEN BALL' : `${holder.name} · ${holder.team === 0 ? 'Blau' : 'Rot'}`) : 'Freier Ball';
+    $('matchStatus').textContent = world.freeze > .1 ? 'ANSTOSS' : world.ball.ownerId === myId ? 'BALLKONTROLLE' : 'MATCH LÄUFT';
+    $('pingLabel').textContent = pingMs ? `PING ${pingMs} MS` : 'LIVE-VERBINDUNG';
   }
   function leave() {
     send({type:'leave'});
-    currentRoom = null; world = null; pendingSolo = false;
+    currentRoom = null; world = null; pendingSolo = false; pendingRejoin = null;
     smoothPlayers.clear(); $('endOverlay').classList.add('hidden');
     switchTo('home');
   }
@@ -231,12 +238,28 @@
   $('copyCode').addEventListener('click',()=>currentRoom&&copyText(currentRoom.code));
   $('copyLink').addEventListener('click',()=>currentRoom&&copyText(`${location.origin}/?room=${currentRoom.code}`));
 
-  // Input: keyboard, mouse aim, and two-finger touch control.
+  function currentAim() {
+    const me = world?.players.find(p=>p.id===myId);
+    let dx = Number(keys.has('d')||keys.has('arrowright')) - Number(keys.has('a')||keys.has('arrowleft'));
+    let dy = Number(keys.has('s')||keys.has('arrowdown')) - Number(keys.has('w')||keys.has('arrowup'));
+    if (stick.active) {dx=stick.x;dy=stick.y;}
+    let ax = dx, ay = dy;
+    if (pointer.active && me) {ax=pointer.x-me.x;ay=pointer.y-me.y;}
+    else if (Math.abs(ax)+Math.abs(ay)<.001 && me) {ax=me.team===1?-1:1;ay=0;}
+    const m=Math.hypot(ax,ay)||1;
+    return {ax:ax/m,ay:ay/m};
+  }
+  function action(kind) {
+    if (!connected || mode !== 'game' || !world || world.status !== 'playing' || world.freeze > 0) return;
+    send({type:'action',kind,...currentAim()});
+    if (kind !== 'tackle') playSfx('kick');
+  }
+  // Input: keyboard, mouse aim, and touch control.
   window.addEventListener('keydown', e => {
     if (mode !== 'game' || $('endOverlay').classList.contains('hidden') === false) return;
     const k = e.key.toLowerCase();
     if ([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) e.preventDefault();
-    if (!e.repeat && (k === ' ' || k === 'e')) { send({type:'action', kind:k === 'e' ? 'pass':'shoot'}); playSfx('kick'); }
+    if (!e.repeat && (k === ' ' || k === 'e' || k === 'q')) action(k === 'e' ? 'pass' : k === 'q' ? 'tackle' : 'shoot');
     keys.add(k);
   });
   window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
@@ -249,7 +272,7 @@
     pointer.active = true;
   });
   $('pitchCanvas').addEventListener('pointerleave',()=>pointer.active=false);
-  $('pitchCanvas').addEventListener('pointerdown',e=> { if(e.pointerType==='mouse'&&e.button===0&&mode==='game') { send({type:'action',kind:'shoot'});playSfx('kick');} });
+  $('pitchCanvas').addEventListener('pointerdown',e=> { if(e.pointerType==='mouse'&&e.button===0&&mode==='game') action('shoot'); });
   const joy = $('joystick');
   function moveStick(e) {
     const rect = joy.getBoundingClientRect();
@@ -263,8 +286,9 @@
   joy.addEventListener('pointermove',e=> { if(stick.active&&stick.pointerId===e.pointerId)moveStick(e); });
   function releaseStick(e) { if (stick.pointerId!==e.pointerId)return;stick.active=false;stick.pointerId=null;stick.x=0;stick.y=0;$('joystickKnob').style.transform='translate(0,0)'; }
   joy.addEventListener('pointerup',releaseStick);joy.addEventListener('pointercancel',releaseStick);
-  $('touchShoot').addEventListener('pointerdown',e=>{e.preventDefault();send({type:'action',kind:'shoot'});playSfx('kick');});
-  $('touchPass').addEventListener('pointerdown',e=>{e.preventDefault();send({type:'action',kind:'pass'});playSfx('kick');});
+  $('touchShoot').addEventListener('pointerdown',e=>{e.preventDefault();action('shoot');});
+  $('touchPass').addEventListener('pointerdown',e=>{e.preventDefault();action('pass');});
+  $('touchTackle').addEventListener('pointerdown',e=>{e.preventDefault();action('tackle');});
   $('touchSprint').addEventListener('pointerdown',e=>{e.preventDefault();sprintTouch=true;e.currentTarget.setPointerCapture(e.pointerId);});
   $('touchSprint').addEventListener('pointerup',()=>sprintTouch=false);
   $('touchSprint').addEventListener('pointercancel',()=>sprintTouch=false);
@@ -290,17 +314,14 @@
     let dy = Number(keys.has('s')||keys.has('arrowdown'))-Number(keys.has('w')||keys.has('arrowup'));
     if (stick.active) { dx = stick.x; dy = stick.y; }
     const d = Math.hypot(dx,dy);if(d>1){dx/=d;dy/=d;}
-    const me = world.players.find(p=>p.id===myId);
-    let ax = dx, ay = dy;
-    if (pointer.active && me) { ax=pointer.x-me.x; ay=pointer.y-me.y; }
-    else if(!ax&&!ay){ax=me?.team===1?-1:1;ay=0;}
-    const am=Math.hypot(ax,ay);if(am>.001){ax/=am;ay/=am;}
+    const {ax,ay}=currentAim();
     send({type:'input',dx,dy,ax,ay,sprint:keys.has('shift')||sprintTouch});
   }
   setInterval(sendInputs,50);
   setInterval(()=> { if(connected && mode !== 'home'){ pingAt=Date.now();send({type:'ping',t:pingAt}); } },5000);
 
-  // High-contrast 2D pitch, dynamic stadium lights, players, ball, effects.
+  const normalizedClient=(x,y)=>{const n=Math.hypot(x,y)||1;return {x:x/n,y:y/n};};
+  // Broadcast-style 2D pitch, players and ball.
   function rr(x,y,w,h,r,fill,stroke,width=1) {
     ctx.beginPath(); ctx.roundRect(x,y,w,h,r); if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();}
   }
@@ -347,15 +368,15 @@
     }
     // LED sideboards
     rr(260,20,260,18,4,'#193c2c');rr(680,20,260,18,4,'#193c2c');
-    ctx.font='bold 12px DM Sans, sans-serif';ctx.fillStyle='#b7ff5ebb';ctx.textAlign='center';
-    ctx.fillText('⚡ STRIKE ARENA',390,34);ctx.fillText('PLAY TOGETHER. WIN TOGETHER.',810,34);
+    ctx.font='bold 12px Inter, sans-serif';ctx.fillStyle='#32d6b0cc';ctx.textAlign='center';
+    ctx.fillText('STRIKE ARENA',390,34);ctx.fillText('ONLINE MATCH',810,34);
   }
   function drawPlayer(p, time) {
     const isMe=p.id===myId;
     const x=p.sx,y=p.sy;
     // Player movement shadow + selected halo
     circle(x+2,y+10,19,'#03130da6');
-    if(isMe){circle(x,y,25,'#b7ff5e22','#c8ff80',3);}
+    if(isMe){circle(x,y,26,'#32d6b020','#32d6b0',3);}
     const hue=COLORS[p.team];
     const gradient=ctx.createRadialGradient(x-7,y-8,2,x,y,19);
     gradient.addColorStop(0,p.team===0?'#e0f4ff':'#ffe8ed');
@@ -367,16 +388,16 @@
     circle(x,y,5,p.team===0?'#1b3460':'#6f1836');
     ctx.font='900 11px DM Sans,sans-serif';ctx.textAlign='center';ctx.fillStyle='#fff';
     ctx.fillText(String((p.slot??1)+1),x,y+4);
-    if(isMe){circle(x,y-30,5,'#b7ff5e');line(x,y-38,x,y-44,'#b7ff5e',2);}
+    if(isMe){circle(x,y-30,5,'#32d6b0');line(x,y-38,x,y-44,'#32d6b0',2);}
     if(!p.bot || isMe){
       const label=p.name.length>12?p.name.slice(0,11)+'…':p.name;
       ctx.font='800 12px DM Sans,sans-serif';const measure=ctx.measureText(label).width;
-      rr(x-measure/2-8,y-55,measure+16,17,4,isMe?'#b7ff5e':'#07180ecf');
-      ctx.fillStyle=isMe?'#12331b':'#f5fff7';ctx.fillText(label,x,y-42);
+      rr(x-measure/2-8,y-55,measure+16,17,4,isMe?'#32d6b0':'#07180ecf');
+      ctx.fillStyle=isMe?'#06352e':'#f5fff7';ctx.fillText(label,x,y-42);
     }
     if(isMe){
       const sw=38;rr(x-sw/2,y+27,sw,4,2,'#001c16','#4a8a55',1);
-      rr(x-sw/2+1,y+28,(sw-2)*p.stamina/100,2,1,'#b7ff5e');
+      rr(x-sw/2+1,y+28,(sw-2)*p.stamina/100,2,1,'#32d6b0');
     }
   }
   function drawBall(ball,time){
@@ -432,19 +453,30 @@
         for(const p of world.players){
           ids.add(p.id);
           let v=smoothPlayers.get(p.id);
-          if(!v){v={sx:p.x,sy:p.y,...p,slot:parseInt(p.id.split('-').at(-1),10)||1};smoothPlayers.set(p.id,v);}
+          if(!v){v={sx:p.x,sy:p.y,...p};smoothPlayers.set(p.id,v);}
           v.sx+=(p.x-v.sx)*Math.min(1,dt*13);
           v.sy+=(p.y-v.sy)*Math.min(1,dt*13);
           Object.assign(v,{name:p.name,id:p.id,team:p.team,bot:p.bot,stamina:p.stamina});
-          if(p.id===myId){v.slot=3;} else if(p.bot){v.slot=parseInt(p.id.split('-').at(-1),10)||0;} else{v.slot=1;}
+          v.slot=p.slot;
           drawPlayer(v,now);
         }
         for(const id of smoothPlayers.keys())if(!ids.has(id))smoothPlayers.delete(id);
         if(!render.previousBall) render.previousBall={...world.ball};
         const ball=render.previousBall;
-        ball.x+=(world.ball.x-ball.x)*Math.min(1,dt*16);
-        ball.y+=(world.ball.y-ball.y)*Math.min(1,dt*16);
+        if (Math.hypot(world.ball.x-ball.x,world.ball.y-ball.y)>180) {ball.x=world.ball.x;ball.y=world.ball.y;}
+        else {ball.x+=(world.ball.x-ball.x)*Math.min(1,dt*18);ball.y+=(world.ball.y-ball.y)*Math.min(1,dt*18);}
         ball.vx=world.ball.vx;ball.vy=world.ball.vy;
+        // Ball controller aura + shooting direction when in possession.
+        const holder=world.players.find(p=>p.id===world.ball.ownerId);
+        if(holder){
+          const v=smoothPlayers.get(holder.id);
+          if(v){circle(v.sx,v.sy,22,null,holder.id===myId?'#32d6b0b0':'#ffffff50',1.6);}
+        }
+        if(world.ball.ownerId===myId){
+          const a=currentAim();const n=normalizedClient(a.ax,a.ay);const x=ball.x,y=ball.y;
+          ctx.beginPath();ctx.moveTo(x+n.x*20,y+n.y*20);ctx.lineTo(x+n.x*77,y+n.y*77);
+          ctx.strokeStyle='#32d6b0c0';ctx.lineWidth=3;ctx.setLineDash([7,7]);ctx.stroke();ctx.setLineDash([]);
+        }
         drawBall(ball,now);
         drawParticles(dt);
         if(world.freeze>0){
