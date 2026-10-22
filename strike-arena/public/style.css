@@ -19,3 +19,34 @@
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.001ms!important;scroll-behavior:auto!important;transition:none!important}}
 
 .rotate-notice{display:none;color:#9cb8c5;font-size:11px;padding:8px 0 13px;text-align:center;letter-spacing:.1px}@media(max-width:600px) and (orientation:portrait){.rotate-notice{display:block}}@media(orientation:landscape) and (max-height:650px){.navbar{height:43px}.game-screen{padding-top:4px}.game-topline{margin-bottom:0}.scoreboard{padding-bottom:12px;margin-bottom:3px}.score-count{font-size:35px}.match-clock{bottom:-2px;padding:1px 6px}.game-layout{display:block}.gamebar{padding:4px 8px}.canvas-outer{aspect-ratio:5/3;max-width:min(92vw,calc(78vh * 5 / 3));margin:auto}.gamebar{max-width:min(92vw,calc(78vh * 5 / 3));margin-left:auto;margin-right:auto}.touch-controls{display:block}.match-aside,.control-guide{display:none}.joystick{height:90px;width:90px;bottom:11px;left:12px}.touch-right{transform:scale(.8);transform-origin:bottom right;right:13px;bottom:8px}}
+
+/* STRIKE ARENA v3 — Match Center, 3D / 2D view and penalty shootout UI */
+.quick-options{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin:18px 0 9px}
+.quick-options>div{min-width:0}.quick-options .spaced{display:block;margin:0 0 8px}
+.premium-select,.game-tools select{width:100%;border:1px solid #456475;background:linear-gradient(145deg,#142c37,#0e222e);color:#e8fcff;border-radius:8px;padding:13px 10px;font:800 12px var(--font);cursor:pointer;outline-color:#56edc3}
+.premium-select option,.game-tools option{background:#142332;color:white}
+.quick-options select:hover,.game-tools select:hover{border-color:#62d5b9}
+.game-tools{display:flex;align-items:center;gap:10px}
+.game-tools label{color:#91b3c1;font:800 10px var(--font);letter-spacing:1px}
+.game-tools select{width:auto;min-width:140px;padding:9px 11px;font-size:11px}
+.game-tools .exit-btn{white-space:nowrap}
+.canvas-outer{background:#0b2c24;border-color:#557f77;isolation:isolate}
+.arena-three-canvas{z-index:1;pointer-events:none!important}
+.canvas-outer #pitchCanvas{position:relative;z-index:2;transition:opacity .3s ease}
+.canvas-outer .in-game-banner{z-index:9}
+.replay-overlay{position:absolute;inset:0 0 auto 0;z-index:15;display:flex;justify-content:space-between;align-items:center;pointer-events:none;gap:9px;padding:12px 18px;background:linear-gradient(180deg,#050d17e3,transparent);color:white;font-size:11px;letter-spacing:1.4px;font-weight:900}
+.replay-overlay>div{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.replay-overlay strong{color:#b7cbd1}
+.replay-live-dot{width:9px;height:9px;background:#ff4865;border-radius:50%;box-shadow:0 0 0 4px #ff486536;animation:pulse 1s infinite}
+.replay-overlay button{pointer-events:auto;padding:9px 12px;background:#f0fff9;color:#0e292b;border:0;border-radius:5px;font:800 10px var(--font)}
+.penalty-panel{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:18;width:min(480px,55%);min-width:240px;border:1px solid #64aeab;background:linear-gradient(135deg,#0b1d28ed,#183a42ed);backdrop-filter:blur(12px);box-shadow:0 12px 45px #0009;border-radius:10px;padding:14px 18px;color:#fff;pointer-events:auto}
+.penalty-title{display:flex;align-items:center;justify-content:space-between;font:900 16px var(--display);letter-spacing:.8px}.penalty-title b{font:800 10px var(--font);color:#a7eacf}
+.penalty-panel p{font-size:11px;line-height:1.4;margin:6px 0 8px;color:#c0d5df}
+.penalty-panel input[type=range]{width:100%;accent-color:#38dfb0;cursor:pointer}
+.penalty-directions{display:flex;justify-content:space-between;margin:2px 0 9px;color:#a6c3ce;font:800 8px var(--font);letter-spacing:1px}
+.penalty-panel button{padding:10px 17px;background:#32d6b0;color:#083027;font:900 12px var(--font);border-radius:5px;border:0;width:100%;cursor:pointer}
+.penalty-panel button span{margin-left:8px}
+.penalty-panel.hidden,.replay-overlay.hidden{display:none!important}
+canvas{user-select:none}
+@media(max-width:800px){.game-tools label{display:none}.game-tools select{min-width:110px}.game-tools{gap:7px}.penalty-panel{width:min(440px,64%);bottom:7px;padding:11px 13px}}
+@media(max-width:560px){.quick-options{gap:9px}.premium-select{padding:10px 5px;font-size:11px}.game-tools select{font-size:9px;min-width:91px;padding:7px 5px}.game-tools .exit-btn{font-size:9px;padding:7px 5px}.game-room-tag{font-size:9px;padding:4px 6px}.penalty-panel{width:58%;min-width:194px;left:49%;padding:8px 11px}.penalty-title{font-size:11px}.penalty-panel p{font-size:9px;margin:3px 0}.penalty-panel button{font-size:10px;padding:7px}.penalty-directions{font-size:7px}.replay-overlay{font-size:9px;padding:6px 8px}.replay-overlay button{font-size:9px;padding:7px}}
+@media (max-width:560px) and (orientation:portrait){.canvas-outer{aspect-ratio:5/3}}
