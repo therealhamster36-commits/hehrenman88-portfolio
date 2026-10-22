@@ -1,0 +1,11 @@
+# STRIKE ARENA lives in the strike-arena/ subdirectory.
+# Render Blueprint: https://dashboard.render.com/blueprints
+services:
+  - type: web
+    name: strike-arena
+    runtime: node
+    plan: free
+    rootDir: strike-arena
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
