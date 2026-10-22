@@ -17,6 +17,42 @@
   const stick = { active: false, pointerId: null, x: 0, y: 0 };
   let sprintTouch = false;
   let viewVersion = 0;
+  const matchHistory = [];
+  let replay = null;
+  let viewChoice = '3d', arena3d = null, loading3d = null;
+  try { viewChoice = localStorage.getItem('strike-view') === '2d' ? '2d' : '3d'; } catch {}
+  $('viewSelect').value = viewChoice;
+  $('gameViewSelect').value = viewChoice;
+  const SIZES = {'1v1':1,'2v2':2,'3v3':3,'4v4':4,penalties:1};
+  function currentSettings() { return {duration:Number($('durationSelect').value),difficulty:$('difficultySelect').value,mode:$('modeSelect').value}; }
+  function quickSettings() { return {duration:180,difficulty:'normal',mode:$('quickModeSelect').value}; }
+  async function changeView(view) {
+    viewChoice = view; $('viewSelect').value = view; $('gameViewSelect').value = view;
+    try { localStorage.setItem('strike-view',view); } catch {}
+    if (view === '3d' && !arena3d) {
+      if(!loading3d){loading3d = import('/arena3d.js?v=3').then(({StrikeArena3D})=>{arena3d = new StrikeArena3D(document.querySelector('.canvas-outer'));}).catch(err=>{console.error('3D renderer failed',err);viewChoice='2d';$('viewSelect').value='2d';$('gameViewSelect').value='2d';notice('3D konnte nicht geladen werden. 2D ist weiterhin spielbar.');}).finally(()=>loading3d=null);}
+      await loading3d;
+    }
+    if(arena3d)arena3d.setVisible(viewChoice==='3d'&&mode==='game');
+    $('pitchCanvas').style.opacity=viewChoice==='3d'&&arena3d?'0':'1';
+  }
+  $('viewSelect').addEventListener('change',e=>changeView(e.target.value));
+  $('gameViewSelect').addEventListener('change',e=>changeView(e.target.value));
+  $('skipReplay').addEventListener('click',()=>stopReplay());
+  function stopReplay(){replay=null;$('replayOverlay').classList.add('hidden');smoothPlayers.clear();}
+  function startReplay(){
+    if(matchHistory.length<10)return;
+    replay={frames:matchHistory.slice(-64),start:performance.now(),duration:4300};
+    $('replayOverlay').classList.remove('hidden');
+  }
+  function replayFrame(now){
+    if(!replay)return null;
+    const fraction=(now-replay.start)/replay.duration;
+    if(fraction>=1){stopReplay();return null;}
+    const index=Math.min(replay.frames.length-1,Math.floor(fraction*replay.frames.length));
+    return replay.frames[index];
+  }
+
 
   try { $('playerName').value = localStorage.getItem('strike-name') || 'Spieler'; } catch {}
   if (q.get('room')) {
@@ -82,11 +118,13 @@
     $('footer').classList.toggle('hidden', next === 'game');
     window.scrollTo({ top: 0, behavior: 'instant' });
     viewVersion++;
+    if (next === 'game') changeView(viewChoice);
+    else if (arena3d) arena3d.setVisible(false);
   }
   function onMessage(msg) {
     if (msg.type === 'welcome') { myId = msg.id; return; }
     if (msg.type === 'error') { notice(msg.message); pendingSolo = false; pendingRejoin = null; return; }
-    if (msg.type === 'left') { currentRoom = null; world = null; switchTo('home'); return; }
+    if (msg.type === 'left') { currentRoom = null; world = null; stopReplay();switchTo('home'); return; }
     if (msg.type === 'room') {
       currentRoom = msg.room; myId = msg.you; pendingRejoin = null;
       if (currentRoom.status === 'lobby') {
@@ -107,12 +145,13 @@
       return;
     }
     if (msg.type === 'started') {
-      world = null; lastStateTick = -1; smoothPlayers.clear(); sparks.length = 0;
+      world = null; lastStateTick = -1; smoothPlayers.clear(); sparks.length = 0;matchHistory.length=0;stopReplay();
       $('endOverlay').classList.add('hidden'); showBanner('ANPFIFF', 900);
       return;
     }
     if (msg.type === 'snapshot') {
       world = msg.state;
+      if (world.status === 'playing' && !world.penalty && world.freeze<=0) {matchHistory.push(world);if(matchHistory.length>100)matchHistory.shift();}
       if (lastStateTick !== world.tick) {
         addNewParticles(world.notices || []);
         lastStateTick = world.tick;
@@ -123,10 +162,12 @@
     if (msg.type === 'goal') {
       playSfx('goal');
       showBanner(msg.team === 0 ? 'TOR FÜR BLAU!' : 'TOR FÜR ROT!', 1600);
+      if(!msg.penalty) startReplay();
       $('blueScore').textContent = msg.score[0]; $('redScore').textContent = msg.score[1];
       return;
     }
-    if (msg.type === 'ended') { showEnd(msg.score); return; }
+    if (msg.type === 'penalty_result') {showBanner(msg.outcome,1100);$('penaltyText').textContent=msg.outcome;return;}
+    if (msg.type === 'ended') { stopReplay();showEnd(msg.score); return; }
     if (msg.type === 'pong') { pingMs = Math.max(0, Date.now() - msg.t); }
   }
   function showBanner(text, ms) {
@@ -153,10 +194,11 @@
     $('displayCode').textContent = currentRoom.code;
     const teams = [currentRoom.users.filter(u => u.team === 0),currentRoom.users.filter(u => u.team === 1)];
     teams.forEach((users, team) => {
-      $(`${team === 0 ? 'blue' : 'red'}Count`).textContent = `${users.length} / 4`;
+      const cap = SIZES[currentRoom.opts.mode] || 4;
+      $(`${team === 0 ? 'blue' : 'red'}Count`).textContent = `${users.length} / ${cap}`;
       const target = $(`${team === 0 ? 'blue' : 'red'}Roster`);
       target.replaceChildren();
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < (SIZES[currentRoom.opts.mode]||4); i++) {
         const user = users[i]; const row = document.createElement('div'); row.className = 'roster-slot';
         const avatar = document.createElement('span'); avatar.className = 'avatar-round';
         avatar.textContent = user ? user.name.charAt(0).toUpperCase() : '✦';
@@ -173,13 +215,16 @@
     const me = currentRoom.users.find(u => u.id === myId);
     ['blue','red'].forEach((teamName, team) => {
       const button = $(`${teamName}Join`);
-      button.disabled = me?.team === team || teams[team].length >= 4;
+      button.disabled = me?.team === team || teams[team].length >= (SIZES[currentRoom.opts.mode]||4);
       button.textContent = me?.team === team ? '✓ Dein Team' : `Team ${team === 0 ? 'Blau' : 'Rot'} wählen`;
     });
     const host = currentRoom.hostId === myId;
     $('startBtn').classList.toggle('hidden', !host);
     $('lobbyWaitText').textContent = host ? 'Freie Plätze werden automatisch von Bots besetzt.' : 'Warte darauf, dass der Host das Match startet.';
-    $('durationSelect').disabled = !host;
+    $('modeSelect').disabled = !host;
+    $('modeSelect').value = currentRoom.opts.mode;
+    $('versusModeText').textContent = currentRoom.opts.mode==='penalties'?'ELFMETER':currentRoom.opts.mode.toUpperCase().replace('V',' VS ');
+    $('durationSelect').disabled = !host || currentRoom.opts.mode==='penalties';
     $('difficultySelect').disabled = !host;
     $('durationSelect').value = currentRoom.opts.duration;
     $('difficultySelect').value = currentRoom.opts.difficulty;
@@ -187,7 +232,12 @@
   function updateHUD() {
     if (!world || mode !== 'game') return;
     $('blueScore').textContent = world.score[0]; $('redScore').textContent = world.score[1];
-    $('matchClock').textContent = formatTime(world.timeLeft);
+    $('matchClock').textContent = world.penalty?'ELFMETER':formatTime(world.timeLeft);
+    const penalty=world.penalty,me=world.players.find(p=>p.id===myId);
+    const isMyTurn=penalty && me?.team===penalty.turn && me?.slot===3 && penalty.phase==='aim';
+    $('penaltyControls').classList.toggle('hidden',!penalty || !isMyTurn);
+    if(penalty){$('penaltyProgress').textContent=`${penalty.shots[0]} : ${penalty.shots[1]} SCHÜSSE`;$('possessionLabel').textContent='ELFMETERSCHIESSEN';$('gameTip').textContent='Ziel mit dem Schieberegler und schieße. Die Teams schießen abwechselnd bis zur Entscheidung.';}
+    else{$('possessionLabel').textContent='BALLBESITZ';$('gameTip').textContent='WASD: laufen · SPACE: schießen · E: passen · Q: Ball erobern. Ansicht jederzeit zwischen 2D und 3D wechseln.';}
     const roster = $('matchRoster');
     const prior = roster.dataset.signature;
     const signature = world.players.map(p => p.id + p.team + p.bot).join(',');
@@ -203,19 +253,19 @@
       roster.dataset.signature = signature;
     }
     const holder = world.players.find(p => p.id === world.ball.ownerId);
-    $('possessionText').textContent = holder ? (holder.id === myId ? 'DU HAST DEN BALL' : `${holder.name} · ${holder.team === 0 ? 'Blau' : 'Rot'}`) : 'Freier Ball';
-    $('matchStatus').textContent = world.freeze > .1 ? 'ANSTOSS' : world.ball.ownerId === myId ? 'BALLKONTROLLE' : 'MATCH LÄUFT';
+    $('possessionText').textContent = penalty ? (isMyTurn?'DU BIST DRAN':`TEAM ${penalty.turn===0?'BLAU':'ROT'} AM PUNKT · ${penalty.phase.toUpperCase()}`) : holder ? (holder.id === myId ? 'DU HAST DEN BALL' : `${holder.name} · ${holder.team === 0 ? 'Blau' : 'Rot'}`) : 'Freier Ball';
+    $('matchStatus').textContent = penalty?'ELFMETER-DUELL':world.freeze > .1 ? 'ANSTOSS' : world.ball.ownerId === myId ? 'BALLKONTROLLE' : 'MATCH LÄUFT';
     $('pingLabel').textContent = pingMs ? `PING ${pingMs} MS` : 'LIVE-VERBINDUNG';
   }
   function leave() {
     send({type:'leave'});
     currentRoom = null; world = null; pendingSolo = false; pendingRejoin = null;
-    smoothPlayers.clear(); $('endOverlay').classList.add('hidden');
+    smoothPlayers.clear(); stopReplay();matchHistory.length=0;$('endOverlay').classList.add('hidden');
     switchTo('home');
   }
   $('brandBtn').addEventListener('click', () => { if (mode !== 'home') leave(); });
-  $('soloBtn').addEventListener('click', () => { pendingSolo = true; send({type:'create',name:getName()}); });
-  $('createBtn').addEventListener('click', () => { pendingSolo = false; send({type:'create',name:getName()}); });
+  $('soloBtn').addEventListener('click', () => { pendingSolo = true; send({type:'create',name:getName(),opts:quickSettings()}); });
+  $('createBtn').addEventListener('click', () => { pendingSolo = false; send({type:'create',name:getName(),opts:quickSettings()}); });
   $('joinBtn').addEventListener('click', () => {
     const code = $('roomCode').value.trim().toUpperCase();
     if (!/^[A-Z0-9]{5}$/.test(code)) { notice('Bitte einen gültigen 5-stelligen Raumcode eingeben.'); return; }
@@ -230,7 +280,7 @@
   for (const t of ['blue','red']) $(`${t}Join`).addEventListener('click', () => send({type:'team',team:t==='blue'?0:1}));
   $('startBtn').addEventListener('click', () => send({type:'start'}));
   $('rematchBtn').addEventListener('click',() => { $('endOverlay').classList.add('hidden'); world=null; send({type:'rematch'}); });
-  for (const id of ['durationSelect','difficultySelect']) $(id).addEventListener('change', () => send({type:'settings',opts:{duration:Number($('durationSelect').value),difficulty:$('difficultySelect').value}}));
+  for (const id of ['modeSelect','durationSelect','difficultySelect']) $(id).addEventListener('change', () => send({type:'settings',opts:currentSettings()}));
   async function copyText(text) {
     try { await navigator.clipboard.writeText(text); notice('In die Zwischenablage kopiert!'); }
     catch { notice('Kopieren nicht erlaubt – Raumcode: ' + currentRoom?.code); }
@@ -244,13 +294,16 @@
     let dy = Number(keys.has('s')||keys.has('arrowdown')) - Number(keys.has('w')||keys.has('arrowup'));
     if (stick.active) {dx=stick.x;dy=stick.y;}
     let ax = dx, ay = dy;
-    if (pointer.active && me) {ax=pointer.x-me.x;ay=pointer.y-me.y;}
+    if(world?.penalty){return {ax:me?.team===1?-1:1,ay:Number($('penaltyAim').value)/100};}
+    if(viewChoice==='3d' && pointer.active && me){ax=me.team===0?1:-1;ay=(pointer.y/H-.5)*1.8;}
+    else if (pointer.active && me) {ax=pointer.x-me.x;ay=pointer.y-me.y;}
     else if (Math.abs(ax)+Math.abs(ay)<.001 && me) {ax=me.team===1?-1:1;ay=0;}
     const m=Math.hypot(ax,ay)||1;
     return {ax:ax/m,ay:ay/m};
   }
   function action(kind) {
-    if (!connected || mode !== 'game' || !world || world.status !== 'playing' || world.freeze > 0) return;
+    if (!connected || mode !== 'game' || !world || world.status !== 'playing' || world.freeze > 0 || replay) return;
+    if(world.penalty && kind!=='shoot')return;
     send({type:'action',kind,...currentAim()});
     if (kind !== 'tackle') playSfx('kick');
   }
@@ -264,6 +317,7 @@
   });
   window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
   window.addEventListener('blur',()=>{keys.clear();sprintTouch=false;stick.x=0;stick.y=0;});
+  $('penaltyKick').addEventListener('click',()=>action('shoot'));
   $('pitchCanvas').addEventListener('pointermove',e=> {
     if (e.pointerType !== 'mouse') return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -309,7 +363,7 @@
     } catch {}
   }
   function sendInputs() {
-    if (!connected || mode !== 'game' || !world || world.status !== 'playing') return;
+    if (!connected || mode !== 'game' || !world || world.status !== 'playing' || replay || world.penalty) return;
     let dx = Number(keys.has('d')||keys.has('arrowright'))-Number(keys.has('a')||keys.has('arrowleft'));
     let dy = Number(keys.has('s')||keys.has('arrowdown'))-Number(keys.has('w')||keys.has('arrowup'));
     if (stick.active) { dx = stick.x; dy = stick.y; }
@@ -447,6 +501,12 @@
   function render(now){
     const dt=Math.min(.05,(now-lastFrame)/1000);lastFrame=now;frameClock+=dt;
     if(mode==='game'){
+      const live=world,playingBack=replayFrame(now);
+      if(playingBack)world=playingBack;
+      if(viewChoice==='3d'&&arena3d){
+        arena3d.draw(world,myId,dt,{replay:!!playingBack,now});
+        world=live;requestAnimationFrame(render);return;
+      }
       ctx.clearRect(0,0,W,H);drawPitch(now);
       if(world){
         const ids=new Set();
@@ -486,6 +546,7 @@
       }else{
         ctx.fillStyle='#f6fff8';ctx.textAlign='center';ctx.font='900 28px DM Sans,sans-serif';ctx.fillText('SPIELFELD WIRD GELADEN ...',W/2,H/2);
       }
+      world=live;
     } else render.previousBall=null;
     requestAnimationFrame(render);
   }
